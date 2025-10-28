@@ -226,9 +226,9 @@ class ContentPipelineFlow(Flow[ContentPipelineState]):
                     "topic": self.state.topic,
                     "content_type": self.state.content_type,
                     "content": (
-                        self.state.tweet_post
-                        if self.state.contenty_type == "tweet"
-                        else self.state.linkedin_post
+                        self.state.tweet_post.model_dump_json()
+                        if self.state.content_type == "tweet"
+                        else self.state.linkedin_post.model_dump_json()
                     ),
                 }
             )
@@ -237,11 +237,10 @@ class ContentPipelineFlow(Flow[ContentPipelineState]):
 
     @router(or_(check_seo, check_virality))
     def score_router(self):
-
         content_type = self.state.content_type
         score = self.state.score
 
-        if score.score >= 8:
+        if score.score >= 7:
             return "check_passed"
         else:
             if content_type == "blog":
@@ -254,7 +253,29 @@ class ContentPipelineFlow(Flow[ContentPipelineState]):
 
     @listen("check_passed")
     def finalize_content(self):
-        print("Scoring content")
+        """Finalize the content"""
+        print("🎉 Finalizing content...")
+
+        if self.state.content_type == "blog":
+            print(f"📝 Blog Post: {self.state.blog_post.title}")
+            print(f"🔍 SEO Score: {self.state.score.score}/10")
+        elif self.state.content_type == "tweet":
+            print(f"🐦 Tweet: {self.state.tweet_post}")
+            print(f"🚀 Virality Score: {self.state.score.score}/10")
+        elif self.state.content_type == "linkedin":
+            print(f"💼 LinkedIn: {self.state.linkedin_post.title}")
+            print(f"🚀 Virality Score: {self.state.score.score}/10")
+
+        print("✅ Content ready for publication!")
+        return (
+            self.state.linkedin_post
+            if self.state.content_type == "linkedin"
+            else (
+                self.state.tweet_post
+                if self.state.content_type == "tweet"
+                else self.state.blog_post
+            )
+        )
 
 flow = ContentPipelineFlow()
 
